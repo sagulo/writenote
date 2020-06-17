@@ -8,9 +8,12 @@ from PyQt5.QtWidgets import QTextEdit,QMainWindow,QTextEdit,QLineEdit, QLabel,QV
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon,QPixmap
 import chardet
+import time
 
+start = time.time()
 getRunPath = os.path.split(os.path.realpath(__file__))[0]
 getPath = os.getcwd()
+
 class MainWindows(QMainWindow):
     
     def __init__(self):
@@ -18,6 +21,7 @@ class MainWindows(QMainWindow):
         self.tabList = [0]
         self.L1 = []
         self.L2 = []
+        self.TextEditList = []
         self.initUI()
         self.createTab()
 
@@ -50,6 +54,8 @@ class MainWindows(QMainWindow):
         self.setCentralWidget(self.qwidget1)
         self.text2 = QTextEdit()
         self.text3 = QTextEdit()
+        self.TextEditList.append(self.text2)
+        self.TextEditList[0].textChanged.connect(self.onTextEditChanged)
         # # self.text2.setAlignment(Qt.AlignCenter)
         # # self.setCentralWidget(self.text2)
         
@@ -78,13 +84,14 @@ class MainWindows(QMainWindow):
         self.tab1.tabCloseRequested.connect(self.closeTab)
 
     def on_currentChanged(self, index):
+        self.undoAct.setEnabled(False)
+        self.redoAct.setEnabled(False)
         print("current tab index:", index)
     
     def on_visibilityChanged(self, visible):
         print(visible)
 
     def closeTab(self, index):
-        print(index)
         self.tab1.removeTab(index)
 
         
@@ -115,9 +122,18 @@ class MainWindows(QMainWindow):
         exitAct.setStatusTip('Exit')
         exitAct.triggered.connect(qApp.quit)
         # 撤销按钮
-        undoAct = QAction('&Undo', self)
-        undoAct.setShortcut("Ctrl+Z")
-        undoAct.setStatusTip('Undo')
+        self.undoAct = QAction('&Undo', self)
+        self.undoAct.setShortcut("Ctrl+Z")
+        self.undoAct.setStatusTip('Undo')
+        self.undoAct. setEnabled(False)
+        self.undoAct.triggered.connect(self.undoText)
+
+        # 撤销按钮
+        self.redoAct = QAction('&Redo', self)
+        self.redoAct.setShortcut("Ctrl+Shift+Z")
+        self.redoAct.setStatusTip('Redo')
+        self.redoAct. setEnabled(False)
+        self.redoAct.triggered.connect(self.redoText)
         # 关于按钮
         aboutAct = QAction('&About', self)
         aboutAct.setStatusTip('About')
@@ -145,7 +161,8 @@ class MainWindows(QMainWindow):
         fileMenu.addAction(selectFolder)
         fileMenu.addAction(saveFile)
         fileMenu.addAction(exitAct)
-        editMenu.addAction(undoAct)
+        editMenu.addAction(self.undoAct)
+        editMenu.addAction(self.redoAct)
         helpMenu.addAction(aboutAct)
         windowMenu.addAction(self.viewStatAct)
         windowMenu.addAction(resetAct)
@@ -171,7 +188,7 @@ class MainWindows(QMainWindow):
         # toolbar = self.addToolBar('Exit')
         # toolbar.addAction(newAct)
     def resetWindow(self):
-        if self.viewStatAct.isChecked or self.dock1.isFloating():
+        if self.viewStatAct.isChecked or self.dock1.isFloating:
             self.viewStatAct.setChecked(True)
             self.dock1.show()
             self.dock1.setFloating(False)
@@ -292,9 +309,11 @@ class MainWindows(QMainWindow):
                 self.tab1.addTab(self.textEdit,item.text(0))
                 if item.text(0) and item.text(0)[-4:] != '.exe':
                     on = open(item.text(0), 'r', encoding=self.get_encoding(item.text(0)))
+                    print(os.path.getsize(item.text(0)))
                     with on:
                         data = on.read()
                         self.textEdit.setText(data)
+                on.close()
         except Exception as e:
                 QMessageBox.warning(self, 'warning', "{}".format(e), QMessageBox.Yes)
 	
@@ -353,6 +372,19 @@ class MainWindows(QMainWindow):
         else:
             self.statusbar.hide()
 
+    def undoText(self):
+        self.TextEditList[0].undo()
+        print("undo")
+
+    def redoText(self):
+        self.TextEditList[0].redo()
+        print("redo")
+
+    def onTextEditChanged(self):
+        print("写了哦")
+        self.undoAct.setEnabled(True)
+        self.redoAct.setEnabled(True)
+
     def selectFolderDialog(self):
         try:
             folderPath = QFileDialog.getExistingDirectory(self, '选取文件', './')
@@ -389,16 +421,17 @@ class MainWindows(QMainWindow):
                             with on:
                                 data = on.read()
                                 self.textEdit.setText(data)
+                on.close()
             except Exception as e:
                 QMessageBox.warning(self, 'warning', "{}".format(e), QMessageBox.Yes)
 
     def newEdit(self):
         self.tabList.append(self.tabList[-1]+1)
         locals()['untitled{}_textedit'.format(self.tabList[-1])] = QTextEdit()
-
+        self.TextEditList.append(locals()['untitled{}_textedit'.format(self.tabList[-1])])
         # locals()['untitled{}_tabwidget'.format(self.tabList[-1])] = self.tab1.currentWidget()
         # locals()['untitled{}_tabwidget'.format(self.tabList[-1])].setObjectName("'untitled{}_tabwidget'.format(self.tabList[-1])")
-        
+        self.TextEditList[-1].textChanged.connect(self.onTextEditChanged)
         
 
         self.tab1.addTab(locals()['untitled{}_textedit'.format(self.tabList[-1])],"untitled({}).txt".format(self.tabList[-1]))
@@ -413,7 +446,7 @@ class MainWindows(QMainWindow):
     def saveFile(self):
         fileName2, ok2 = QFileDialog.getSaveFileName(self,
             "Save File",
-            getPath+'/untitled.txt',
+            getPath+'/{}'.format("untitled.txt"),
             "Text Files (*.txt)")
         
         if not fileName2:
@@ -492,4 +525,7 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
     ex = MainWindows()
+    end = time.time()
+    shi = end - start
+    print("时间:{}".format(shi))
     sys.exit(app.exec_())
