@@ -1,4 +1,4 @@
-﻿# coding: utf-8
+# coding: utf-8
 import sys
 # from PyQt5.QtWidgets import QMainWindow, QApplication, QAction, qApp, QFileDialog, QTextEdit, QMenu, QLineEdit, QLabel, QHBoxLayout, QVBoxLayout, QPushButton, QToolBar
 import os
@@ -7,6 +7,7 @@ import os
 from PyQt5.QtWidgets import QTextEdit,QMainWindow,QTextEdit,QLineEdit, QLabel,QVBoxLayout,QWidget,QApplication,QDesktopWidget,QAction,qApp,QTreeWidget,QHeaderView,QTreeWidgetItem,QDockWidget,QTabWidget,QMessageBox,QFileDialog
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon,QPixmap
+import chardet
 
 getRunPath = os.path.split(os.path.realpath(__file__))[0]
 getPath = os.getcwd()
@@ -56,12 +57,12 @@ class MainWindows(QMainWindow):
         self.tab1.setMovable(True)
         self.tab1.setTabShape (QTabWidget.Triangular)# 三角，0，默认
         self.tab1.setTabsClosable(True)
-        # self.tab1.addTab(self.text2,"untitled.txt")
-        # self.tab1.setTabText(0, "untitled.txt")
-        # self.untitled_tabwidget = self.tab1.currentWidget()
-        # self.untitled_tabwidget.setObjectName('untitled')
-        untitled = self.tab1.tabBar()
-        untitled.addTab("untitled.txt")
+        self.tab1.addTab(self.text2,"untitled.txt")
+        self.tab1.setTabText(0, "untitled.txt")
+        self.untitled_tabwidget = self.tab1.currentWidget()
+        self.untitled_tabwidget.setObjectName('untitled')
+        # untitled = self.tab1.tabBar()
+        # untitled.addTab("untitled.txt")
 
         self.untitled = QTreeWidgetItem(self.opening)
         self.untitled.setText(0,"untitled.txt")
@@ -78,7 +79,6 @@ class MainWindows(QMainWindow):
 
     def on_currentChanged(self, index):
         print("current tab index:", index)
-        print(self.untitled_tabwidget.objectName())
     
     def on_visibilityChanged(self, visible):
         print(visible)
@@ -114,16 +114,23 @@ class MainWindows(QMainWindow):
         exitAct.setShortcut('Ctrl+Q')
         exitAct.setStatusTip('Exit')
         exitAct.triggered.connect(qApp.quit)
-
         # 撤销按钮
         undoAct = QAction('&Undo', self)
         undoAct.setShortcut("Ctrl+Z")
         undoAct.setStatusTip('Undo')
-
         # 关于按钮
         aboutAct = QAction('&About', self)
         aboutAct.setStatusTip('About')
         aboutAct.triggered.connect(self.aboutMessage)
+        #dock
+        self.viewStatAct = QAction('Resource manager', self, checkable=True)
+        self.viewStatAct.setStatusTip('Resource manager')
+        self.viewStatAct.setChecked(True)
+        self.viewStatAct.triggered[bool].connect(self.viewBool)
+
+        resetAct = QAction("Reset", self)
+        resetAct.setStatusTip('Reset')
+        resetAct.triggered.connect(self.resetWindow)
 
         self.statusBar()
 
@@ -140,13 +147,8 @@ class MainWindows(QMainWindow):
         fileMenu.addAction(exitAct)
         editMenu.addAction(undoAct)
         helpMenu.addAction(aboutAct)
-
-        self.viewStatAct = QAction('Resource manager', self, checkable=True)
-        self.viewStatAct.setStatusTip('Resource manager')
-        self.viewStatAct.setChecked(True)
-        # self.viewStatAct.triggered.connect(self.toggleMenu)
-        self.viewStatAct.triggered[bool].connect(self.viewBool)
         windowMenu.addAction(self.viewStatAct)
+        windowMenu.addAction(resetAct)
     # def creteToolBar(self):
     #     self.toolBar = QToolBar()
     #     #MainWindow.addToolBar(QtCore.Qt.LeftToolBarArea, self.toolBar)
@@ -168,6 +170,10 @@ class MainWindows(QMainWindow):
 
         # toolbar = self.addToolBar('Exit')
         # toolbar.addAction(newAct)
+    def resetWindow(self):
+        self.viewStatAct.setChecked(True)
+        self.dock1.show()
+        
 
     def viewBool(self, b):
         if b:
@@ -198,7 +204,7 @@ class MainWindows(QMainWindow):
 
         self.dock1 = QDockWidget('Resource manager')
         # dock1.setFeatures(QDockWidget.DockWidgetFloatable)
-        self.dock1.setAllowedAreas(Qt.LeftDockWidgetArea)
+        self.dock1.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea | Qt.TopDockWidgetArea | Qt.BottomDockWidgetArea)
         self.dock1.visibilityChanged[bool].connect(self.on_visibilityChanged)
         # dock1.setFeatures(QDockWidget.AllDockWidgetFeatures | QDockWidget.DockWidgetVerticalTitleBar)
         # 返回该停靠窗口使用的标题栏部件
@@ -208,7 +214,13 @@ class MainWindows(QMainWindow):
         # dock1.setTitleBarWidget(titleBar)
         self.dock1.setWidget(self.tree)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock1)
-        
+        self.dock1.sizeHint()
+        self.dock1.adjustSize()
+        self.dock1.dockLocationChanged[Qt.DockWidgetArea].connect(self.on_dockLocationChanged)
+
+    def on_dockLocationChanged(self,area):
+        print(area)
+
     def on_visibilityChanged(self, visible):
         if visible:
             self.viewStatAct.setChecked(True)
@@ -218,7 +230,7 @@ class MainWindows(QMainWindow):
     def closeEvent(QDockWidget, event):
         print("1")
 
-    def createCwdTree(self,pather):
+    def createCwdTree(self, pather):
         self.tree.clear()
         self.L1.clear()
         self.L2.clear()
@@ -237,9 +249,9 @@ class MainWindows(QMainWindow):
         for files in os.listdir(pather):
             if os.path.isfile(files):
                 self.L1.append(files)
-            else:
+            elif os.path.isdir(files):
                 self.L2.append(files)
-		
+                
         if self.L1 or self.L2:
             self.Ls1 = self.merge_sort(list(self.L1))
             self.Ls2 = self.merge_sort(list(self.L2))
@@ -265,19 +277,19 @@ class MainWindows(QMainWindow):
         self.tree.expandAll()
         
     def onTreeClicked(self, qmodelindex):
-        item = self.tree.currentItem()
-        print("key=%s ,value=%s" % (item.text(0), item.text(1)))
-        if os.path.isfile(item.text(0)):
-            self.textEdit = QTextEdit()
-            self.tab1.addTab(self.textEdit,item.text(0))
-            
-            if item.text(0):
-                self.setWindowTitle("{}-writenote".format(oname[0]))
-                on = open(item.text(0), 'r', encoding="utf-8")
-
-                with on:
-                    data = on.read()
-                    self.textEdit.setText(data)
+        try:
+            item = self.tree.currentItem()
+            print("key=%s ,value=%s" % (item.text(0), item.text(1)))
+            if os.path.isfile(item.text(0)):
+                self.textEdit = QTextEdit()
+                self.tab1.addTab(self.textEdit,item.text(0))
+                if item.text(0) and item.text(0)[-4:] != '.exe':
+                    on = open(item.text(0), 'r', encoding=self.get_encoding(item.text(0)))
+                    with on:
+                        data = on.read()
+                        self.textEdit.setText(data)
+        except Exception as e:
+                QMessageBox.warning(self, 'warning', "{}".format(e), QMessageBox.Yes)
 	
     def addTreeNodeBtn(self):
         print('--- addTreeNodeBtn ---')
@@ -345,6 +357,8 @@ class MainWindows(QMainWindow):
                 return
             else:
                 getPath = folderPath
+                # 更改工作目录
+                os.chdir(getPath)
                 self.root.setText(0,getPath)
                 self.createCwdTree(getPath)
                 # 展开所有节点
@@ -420,6 +434,11 @@ class MainWindows(QMainWindow):
     def clicked(self,qModelIndex):
         #提示信息弹窗，你选择的信息
         QMessageBox.information(self,'ListWidget','你选择了：'+self.qList[qModelIndex.row()])
+
+    def get_encoding(self,filename):
+        with open(filename,'rb') as f:
+            tmp = chardet.detect(f.read(2))
+        return tmp['encoding']
 
     def merge_sort(self,nums):
         import math
