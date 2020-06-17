@@ -173,6 +173,8 @@ class MainWindows(QMainWindow):
     def resetWindow(self):
         self.viewStatAct.setChecked(True)
         self.dock1.show()
+        self.dock1.setFloating(False)
+        self.setArea(Qt.LeftDockWidgetArea)
         
 
     def viewBool(self, b):
@@ -213,10 +215,14 @@ class MainWindows(QMainWindow):
         # titleBar=QWidget()
         # dock1.setTitleBarWidget(titleBar)
         self.dock1.setWidget(self.tree)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.dock1)
-        self.dock1.sizeHint()
-        self.dock1.adjustSize()
+        # self.addDockWidget(Qt.LeftDockWidgetArea, self.dock1)
+        self.setArea(Qt.LeftDockWidgetArea)
+        # self.dock1.sizeHint()
+        # self.dock1.adjustSize()
         self.dock1.dockLocationChanged[Qt.DockWidgetArea].connect(self.on_dockLocationChanged)
+
+    def setArea(self, area):
+        self.addDockWidget(area, self.dock1)
 
     def on_dockLocationChanged(self,area):
         print(area)
@@ -341,14 +347,10 @@ class MainWindows(QMainWindow):
         for w in QApplication.topLevelWidgets():
             x = x + 1
         print(x)
-        # self.dock1.visibilityChanged()
         if state:
             self.statusbar.show()
         else:
             self.statusbar.hide()
-
-    # def visibilityChanged(self, evt):
-    #     print("1122")
 
     def selectFolderDialog(self):
         try:
