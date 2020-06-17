@@ -2,7 +2,8 @@
 
 ___
 
-### Daily progress:
+### Daily progress
 
+* 2020 6-16 Menu and Dock connection.
 
-* 2020 6-16 Completed goals menu and dock connection.
+* 2020 6-17 Added reset button and fixed switch folder bug.
