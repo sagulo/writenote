@@ -171,10 +171,11 @@ class MainWindows(QMainWindow):
         # toolbar = self.addToolBar('Exit')
         # toolbar.addAction(newAct)
     def resetWindow(self):
-        self.viewStatAct.setChecked(True)
-        self.dock1.show()
-        self.dock1.setFloating(False)
-        self.setArea(Qt.LeftDockWidgetArea)
+        if self.viewStatAct.isChecked or self.dock1.isFloating():
+            self.viewStatAct.setChecked(True)
+            self.dock1.show()
+            self.dock1.setFloating(False)
+            self.setArea(Qt.LeftDockWidgetArea)
         
 
     def viewBool(self, b):
